@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -76,11 +77,23 @@ if uploaded_file:
         total_power = df_data['X'].sum()
         total_current = pd.to_numeric(df_data['Current'], errors='coerce').fillna(0).sum()
 
+        # Create summary I/O card table
+        summary_data = {
+            'Type': ['DI-8ch', 'DO_8ch', 'DI-4ch', 'DO-4ch', 'AI-4ch', 'AO-4ch', '1C/O', 'SS'],
+            'Total': [71, 67, 170, 73, 0, 0, 67, 67]
+        }
+        summary_df = pd.DataFrame(summary_data)
+        summary_df['Spare 10%'] = summary_df['Total'] * 0.10
+        summary_df['Grand Total'] = summary_df['Total'] + summary_df['Spare 10%']
+        summary_df['Cards'] = summary_df['Total'] / summary_df['Type'].apply(lambda x: 8 if '8ch' in x else 4 if '4ch' in x else np.nan)
+        summary_df['Consider'] = summary_df['Cards'].apply(lambda x: int(np.ceil(x)) if pd.notnull(x) else '')
+
         st.success(f"✅ Processed successfully. Total Power = {total_power:.1f} kW, Total Current = {total_current:.1f} A")
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df_data.to_excel(writer, sheet_name='Sheet1', index=False)
+            df_data.to_excel(writer, sheet_name='Processed', index=False)
+            summary_df.to_excel(writer, sheet_name='Summary', index=False)
         output.seek(0)
 
         st.download_button(
@@ -92,3 +105,4 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"❌ Error processing file: {e}")
+
